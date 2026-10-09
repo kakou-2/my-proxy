@@ -1,18 +1,15 @@
-name: Release
+name: Build Artifacts
 
-# 推送 v* 标签（如 v1.2.0）时自动构建多平台产物，
-# 并创建包含构建产物与自动生成说明的草稿 Release。
 on:
-  push:
-    tags:
-      - "v*"
-
-permissions:
-  contents: write
+  workflow_dispatch:
+    inputs:
+      version:
+        required: true
+        default: "v1.2.1"
 
 jobs:
-  release:
-    name: Build artifacts and create draft release
+  build:
+    name: Build artifacts
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
@@ -35,18 +32,14 @@ jobs:
       - name: Build release artifacts
         shell: bash
         run: |
-          VERSION="${GITHUB_REF_NAME#v}"
-          bash scripts/build-release.sh --version "$VERSION" --tag "$GITHUB_REF_NAME" --clean
+          VERSION="${{ github.event.inputs.version }}"
+          TAG="v${VERSION}"
+          bash scripts/build-release.sh --version "$VERSION" --tag "$TAG" --clean
 
-      - name: Create draft release
-        uses: softprops/action-gh-release@v3
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
         with:
-          tag_name: ${{ github.ref_name }}
-          name: ${{ github.ref_name }}
-          draft: true
-          generate_release_notes: true
-          fail_on_unmatched_files: true
-          files: |
-            dist/release/${{ github.ref_name }}/my-proxy-*.tar.gz
-            dist/release/${{ github.ref_name }}/my-proxy-*.zip
-            dist/release/${{ github.ref_name }}/checksums.txt
+          name: release-artifacts
+          path: |
+            dist/release/v${{ github.event.inputs.version }}/my-proxy-*.zip
+          retention-days: 30
